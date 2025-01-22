@@ -1,0 +1,54 @@
+name: 'GitHub Branch Protection Action'
+description: 'Automate branch protection rules across repositories'
+
+inputs:
+  github_token:
+    description: 'GitHub token with repository access'
+    required: true
+  github_owner:
+    description: 'GitHub organization or username'
+    required: true
+  repos_file:
+    description: 'Path to file containing repository names'
+    required: false
+  repos:
+    description: 'Space-separated list of repositories'
+    required: false
+  verify_only:
+    description: 'Only verify protection rules without modifying'
+    required: false
+    default: 'false'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run branch protection
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        GITHUB_OWNER: ${{ inputs.github_owner }}
+      run: |
+        COMMAND="python -m src.main"
+        
+        if [[ "${{ inputs.verify_only }}" == "true" ]]; then
+          COMMAND="$COMMAND --verify-only"
+        fi
+        
+        if [[ -n "${{ inputs.repos_file }}" ]]; then
+          COMMAND="$COMMAND --repos-file ${{ inputs.repos_file }}"
+        elif [[ -n "${{ inputs.repos }}" ]]; then
+          COMMAND="$COMMAND --repos ${{ inputs.repos }}"
+        fi
+        
+        $COMMAND 

@@ -21,6 +21,9 @@ wheels/
 *.egg
 MANIFEST
 Scripts/
+pyenv.cfg
+setup.py
+docker-compose.yml
 
 # Virtual Environment
 venv/

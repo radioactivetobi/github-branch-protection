@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  github-protect:
+    build: .
+    volumes:
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    # Override entrypoint to allow custom commands
+    entrypoint: []
+    # Default command runs the protection
+    command: github-protect
+    # Uncomment and modify for verification mode
+    # command: github-protect --verify-only
+    # Uncomment and modify for specific repositories
+    # command: github-protect --repos repo1 repo2

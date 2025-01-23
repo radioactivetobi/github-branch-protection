@@ -1,4 +1,4 @@
-"""GitHub branch protection automation package."""
+"""Branch protection automation package."""
 from .config import config
 from .logger import logger
 from .github_api import github_api

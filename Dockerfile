@@ -3,12 +3,18 @@ FROM python:3.9-slim
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Copy requirements first for better caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy the source code
 COPY src/ ./src/
+COPY entrypoint.sh /entrypoint.sh
 
-# Set the entrypoint
-ENTRYPOINT ["python", "-m", "src.main"]
+# Make entrypoint executable
+RUN chmod +x /entrypoint.sh
+
+# Set PYTHONPATH to recognize the src module
+ENV PYTHONPATH=/app
+
+ENTRYPOINT ["/entrypoint.sh"]

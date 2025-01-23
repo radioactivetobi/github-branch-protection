@@ -1,7 +1,7 @@
 """Main entry point for GitHub branch protection automation."""
 import argparse
 import sys
-from typing import List, Optional, Dict
+from typing import List, Dict
 
 from .config import config
 from .logger import logger
@@ -30,79 +30,89 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
-def read_repos_from_file(file_path: str) -> List[str]:
-    """Read repository names from a text file."""
+def verify_repository(repo_name: str) -> Dict:
+    """Verify branch protection rules for a single repository."""
     try:
-        with open(file_path, 'r') as f:
-            # Read lines, strip whitespace, and filter out empty lines
-            repos = [line.strip() for line in f.readlines()]
-            repos = [repo for repo in repos if repo and not repo.startswith('#')]
+        default_branch = github_api.get_default_branch(repo_name)
+        protection = github_api.get_branch_protection(repo_name, default_branch)
+        
+        # Check if protection exists and meets requirements
+        if protection and github_api.verify_protection_rules(protection):
+            logger.info(f"[PASS] {repo_name}: Branch protection rules are properly configured")
+            return {"name": repo_name, "status": True, "issues": []}
+        else:
+            issues = github_api.get_protection_issues(protection)
+            logger.warning(f"[FAIL] {repo_name}: Branch protection rules need updates")
+            return {"name": repo_name, "status": False, "issues": issues}
             
-            if not repos:
-                logger.warning(f"No repository names found in {file_path}")
-                return []
-                
-            logger.info(f"Loaded {len(repos)} repositories from {file_path}")
-            return repos
     except Exception as e:
-        logger.error(f"Failed to read repositories from {file_path}: {str(e)}")
-        raise
+        logger.error(f"Failed to verify {repo_name}: {str(e)}")
+        return {"name": repo_name, "status": False, "issues": [str(e)]}
 
-def verify_repositories(repositories: List[str]) -> List[Dict]:
-    """Verify branch protection rules for specified repositories."""
+def process_repositories(repositories: List[str], verify_only: bool = False) -> List[Dict]:
+    """Process a list of repositories."""
     results = []
     for repo in repositories:
-        result = github_api.verify_protection(repo)
-        results.append(result)
-        if not result['status']:
-            logger.error(f"Branch protection verification failed for {repo}")
+        try:
+            if verify_only:
+                results.append(verify_repository(repo))
+            else:
+                # Initial verification
+                logger.info(f"Verifying current protection rules for {repo}")
+                initial_check = verify_repository(repo)
+                
+                # If protection is already properly configured, skip
+                if initial_check["status"]:
+                    logger.info(f"[PASS] {repo}: Already properly configured")
+                    results.append(initial_check)
+                    continue
+                    
+                # Apply protection rules
+                logger.info(f"Applying protection rules to {repo}")
+                default_branch = github_api.get_default_branch(repo)
+                github_api.set_branch_protection(repo, default_branch)
+                
+                # Verify after applying
+                logger.info(f"Verifying applied protection rules for {repo}")
+                final_check = verify_repository(repo)
+                results.append(final_check)
+                
+        except Exception as e:
+            logger.error(f"Failed to process {repo}: {str(e)}")
+            results.append({
+                "name": repo,
+                "status": False,
+                "issues": [str(e)]
+            })
+            
     return results
 
 def main() -> int:
-    """Main execution function."""
+    """Main entry point."""
     try:
         args = parse_args()
         
-        # Determine repository list from arguments
-        if args.repos_file:
-            config.repositories = read_repos_from_file(args.repos_file)
-        elif args.repos:
-            config.repositories = args.repos
-        
-        if not config.repositories:
+        # Determine repository list
+        if args.repos:
+            repositories = args.repos
+        elif args.repos_file:
+            repositories = github_api.read_repos_from_file(args.repos_file)
+        else:
+            repositories = config.repositories
+            
+        if not repositories:
             logger.error("No repositories specified. Use --repos or --repos-file")
             return 1
-        
-        config.validate()
-        
-        logger.info("Starting branch protection automation")
-        logger.info(f"Processing repositories: {', '.join(config.repositories)}")
-        
-        if args.verify_only:
-            logger.info("Running in verify-only mode")
-            results = verify_repositories(config.repositories)
             
-            # Generate report
-            report_path = generate_protection_report(results)
-            logger.info(f"Report generated: {report_path}")
-            
-            return 0 if all(r['status'] for r in results) else 1
-        
         # Process repositories
-        github_api.process_repositories()
+        results = process_repositories(repositories, args.verify_only)
         
-        # Verify protection rules and generate report
-        logger.info("Verifying branch protection rules")
-        results = verify_repositories(config.repositories)
+        # Generate report
         report_path = generate_protection_report(results)
         logger.info(f"Report generated: {report_path}")
         
-        if all(r['status'] for r in results):
-            logger.info("Branch protection automation completed successfully")
-            return 0
-        else:
-            logger.error("Branch protection verification failed for one or more repositories")
-            return 1
+        # Return success only if all repositories are properly protected
+        return 0 if all(r["status"] for r in results) else 1
             
     except KeyboardInterrupt:
         logger.info("Operation cancelled by user")

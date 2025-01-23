@@ -10,19 +10,13 @@ class Config:
         """Initialize configuration."""
         load_dotenv()
         
-        # Initialize with None
-        self.github_token: Optional[str] = None
-        self.github_owner: Optional[str] = None
-        self.repositories: Optional[List[str]] = None
+        # Required settings
+        self.github_token = os.getenv('GITHUB_TOKEN')
+        self.github_owner = os.getenv('GITHUB_OWNER')
         
-        # Load from environment
-        self.github_token = self._get_required('GITHUB_TOKEN')
-        self.github_owner = self._get_required('GITHUB_OWNER')
-        
-        # Get repositories from environment or command line
-        repos_env = os.getenv('REPOSITORIES')
-        if repos_env:
-            self.repositories = [r.strip() for r in repos_env.split() if r.strip()]
+        # Optional settings
+        self.repositories = self._get_repositories()
+        self.verify_only = os.getenv('VERIFY_ONLY', 'false').lower() == 'true'
         
         # Branch protection settings
         self.required_approvals = int(os.getenv('REQUIRED_APPROVALS', '1'))
@@ -33,20 +27,20 @@ class Config:
         self.log_level = os.getenv('LOG_LEVEL', 'INFO')
         self.log_file = os.getenv('LOG_FILE', 'branch_protection.log')
     
-    def _get_required(self, key: str) -> str:
-        """Get required environment variable."""
-        value = os.getenv(key)
-        if not value:
-            raise ValueError(f"Required environment variable '{key}' is not set")
-        return value
+    def _get_repositories(self) -> List[str]:
+        """Get repositories from environment."""
+        repos = os.getenv('REPOSITORIES', '')
+        if repos:
+            return [r.strip() for r in repos.split() if r.strip()]
+        return []
     
     def validate(self):
         """Validate configuration."""
-        if not self.repositories:
-            raise ValueError("No repositories specified. Use --repos, --repos-file, or REPOSITORIES environment variable")
-        
-        if not all(self.repositories):
-            raise ValueError("Empty repository name in list")
+        if not self.github_token:
+            raise ValueError("GitHub token not set. Set GITHUB_TOKEN environment variable.")
+            
+        if not self.github_owner:
+            raise ValueError("GitHub owner not set. Set GITHUB_OWNER environment variable.")
 
 # Create a global config instance
 config = Config()

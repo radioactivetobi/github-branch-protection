@@ -20,9 +20,10 @@ if [ "${VERIFY_ONLY}" = "true" ]; then
 fi
 
 if [ -n "${REPOSITORIES}" ]; then
-    COMMAND="${COMMAND} --repos ${REPOSITORIES}"
+    # Convert space-separated list to command line arguments
+    COMMAND="${COMMAND} --repos ${REPOSITORIES// / }"
 fi
 
-# Execute the command
+# Debug command
 echo "Executing: ${COMMAND}"
 exec $COMMAND 

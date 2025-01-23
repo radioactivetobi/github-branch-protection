@@ -14,11 +14,8 @@ inputs:
   repos:
     description: 'Space-separated list of repositories'
     required: false
-  repos_file:
-    description: 'Path to file containing repository names'
-    required: false
   verify_only:
-    description: 'Only verify protection rules without modifying'
+    description: 'Only verify protection rules'
     required: false
     default: 'false'
 

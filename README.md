@@ -131,7 +131,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Run branch protection
-        uses: your-username/github-branch-protection@main
+        uses: radioactivetobi/github-branch-protection@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           github_owner: ${{ github.repository_owner }}

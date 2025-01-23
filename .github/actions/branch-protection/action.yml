@@ -11,9 +11,9 @@ inputs:
   github_owner:
     description: 'GitHub organization or username'
     required: true
-  repos:
+  repositories:
     description: 'Space-separated list of repositories'
-    required: false
+    required: true
   verify_only:
     description: 'Only verify protection rules'
     required: false
@@ -25,5 +25,5 @@ runs:
   env:
     GITHUB_TOKEN: ${{ inputs.github_token }}
     GITHUB_OWNER: ${{ inputs.github_owner }}
-    REPOS: ${{ inputs.repos }}
+    REPOSITORIES: ${{ inputs.repositories }}
     VERIFY_ONLY: ${{ inputs.verify_only }} 

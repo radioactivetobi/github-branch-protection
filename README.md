@@ -19,7 +19,59 @@ Automate the deployment and management of branch protection rules across multipl
 - ⚙️ Configurable via environment variables or command line
 - 🛡️ Error handling and retry logic
 
-## Quick Start with Docker
+## Usage as GitHub Action
+
+Add this workflow to your repository:
+
+```yaml
+name: Branch Protection Check
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+  workflow_dispatch:
+    inputs:
+      verify_only:
+        description: 'Only verify protection rules'
+        type: boolean
+        default: true
+
+jobs:
+  protect-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Branch Protection
+        uses: radioactivetobi/github-branch-protection@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_owner: ${{ github.repository_owner }}
+          repos: "repo1 repo2 repo3"
+          verify_only: ${{ github.event.inputs.verify_only }}
+```
+
+### Action Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `github_token` | GitHub token with repository access | Yes | - |
+| `github_owner` | GitHub organization or username | Yes | - |
+| `repos` | Space-separated list of repositories | No | - |
+| `repos_file` | Path to file containing repository names | No | - |
+| `verify_only` | Only verify protection rules | No | false |
+
+### Repository List File Format
+
+If using `repos_file`, create a text file (e.g., `repos.txt`):
+```text
+# One repository per line
+repo1
+repo2
+repo3
+```
+
+## Local Installation
 
 1. Clone the repository:
 ```bash
@@ -27,69 +79,18 @@ git clone https://github.com/radioactivetobi/github-branch-protection.git
 cd github-branch-protection
 ```
 
-2. Copy and configure the environment file:
-```bash
-cp .env.example .env
-# Edit .env with your GitHub settings
-```
-
-3. Run with Docker Compose:
-```bash
-docker-compose up
-```
-
-## Alternative Installation (without Docker)
-
-1. Create and activate a virtual environment:
+2. Create and activate a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-2. Install dependencies:
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Configuration
-
-Edit `.env` with your settings:
-```env
-# GitHub Personal Access Token with repo scope
-GITHUB_TOKEN=your_token_here
-
-# GitHub Organization or Username
-GITHUB_OWNER=your_org_or_username
-
-# Comma-separated list of repository names (optional if using --repos or --repos-file)
-REPOSITORIES=repo1,repo2,repo3
-
-# Logging
-LOG_LEVEL=INFO
-```
-
-### Repository List File Format
-
-Create a text file (e.g., `repos.txt`) with repository names:
-```text
-# List your repositories below (one per line)
-# Lines starting with # are ignored
-repo1
-repo2
-repo3
-```
-
-### GitHub Token Permissions
-
-Your GitHub token needs the following permissions:
-- `repo` scope for private repositories
-- `public_repo` scope for public repositories
-
-Generate a token at: https://github.com/settings/tokens
-
-## Usage
-
-### Local Usage
+## Local Usage
 
 ```bash
 # Basic usage
@@ -105,84 +106,27 @@ python -m src.main --verify-only --repos-file repos.txt
 python -m src.main --repos repo1 repo2 repo3
 ```
 
-### GitHub Actions Usage
+## Docker Usage
 
-You can use this tool as a GitHub Action in your workflows. There are two ways to use it:
-
-#### 1. Using the Pre-built Action
-
-```yaml
-name: Branch Protection Check
-
-on:
-  schedule:
-    - cron: '0 0 * * 1'  # Run weekly on Monday
-  workflow_dispatch:
-    inputs:
-      verify_only:
-        description: 'Only verify protection rules'
-        type: boolean
-        default: false
-
-jobs:
-  protect-branches:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Run branch protection
-        uses: radioactivetobi/github-branch-protection@main
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          github_owner: ${{ github.repository_owner }}
-          repos_file: 'repos.txt'
-          verify_only: ${{ github.event.inputs.verify_only }}
+1. Build the image:
+```bash
+docker build -t branch-protection .
 ```
 
-#### 2. Using the Composite Action
-
-```yaml
-name: Branch Protection Check
-
-on:
-  workflow_dispatch:
-
-jobs:
-  protect-branches:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: ./.github/actions/branch-protection
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          github_owner: ${{ github.repository_owner }}
-          repos_file: 'repos.txt'
+2. Run the container:
+```bash
+docker run -e GITHUB_TOKEN=your_token \
+          -e GITHUB_OWNER=your_username \
+          branch-protection --verify-only
 ```
 
-### Action Inputs
+## Configuration
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `github_token` | GitHub token with repository access | Yes | - |
-| `github_owner` | GitHub organization or username | Yes | - |
-| `repos_file` | Path to file containing repository names | No | - |
-| `repos` | Space-separated list of repositories | No | - |
-| `verify_only` | Only verify protection rules without modifying | No | false |
-
-### Workflow Triggers
-
-The action can be triggered in several ways:
-- **Schedule**: Run automatically on a defined schedule
-- **Manual**: Trigger manually through the GitHub UI
-- **Other Events**: Can be integrated with other GitHub events like push or pull request
-
-### Action Artifacts
-
-The action automatically uploads the generated PDF report as a workflow artifact:
-- Report name: `branch-protection-report`
-- Retention period: 30 days
-- Contains detailed analysis of protection rules
+Create a `.env` file with your settings:
+```env
+GITHUB_TOKEN=your_token_here
+GITHUB_OWNER=your_org_or_username
+```
 
 ## Generated Reports
 
@@ -200,59 +144,64 @@ reports/branch_protection_report_YYYYMMDD_HHMMSS.pdf
 
 ## Branch Protection Rules
 
-The tool enforces the following protection rules on the default branch:
+The tool enforces the following protection rules:
+- Required pull request reviews
+- Required status checks
+- Enforce for administrators
+- Prevent force pushes
+- Prevent branch deletions
 
-- **Pull Request Reviews**
-  - Requires 1 approving review
-  - Dismisses stale pull request approvals
-  - Restricts review dismissals
-
-- **Status Checks**
-  - Requires status checks to pass
-  - Requires branches to be up to date
-
-- **Additional Protections**
-  - Enforces for administrators
-  - Prevents force pushes
-  - Prevents branch deletions
-  - Requires strict status checks
-
-## Example Output
-
+## Project Structure
 ```
-2024-XX-XX XX:XX:XX - INFO - Connected to GitHub as username
-2024-XX-XX XX:XX:XX - INFO - Starting branch protection automation
-2024-XX-XX XX:XX:XX - INFO - Loaded 3 repositories from repos.txt
-2024-XX-XX XX:XX:XX - INFO - Processing repositories: repo1, repo2, repo3
-2024-XX-XX XX:XX:XX - INFO - Default branch is: main
-2024-XX-XX XX:XX:XX - INFO - Setting branch protection ruleset for repo1
-2024-XX-XX XX:XX:XX - INFO - Successfully set branch protection for repo1
-2024-XX-XX XX:XX:XX - INFO - Generated protection report: reports/branch_protection_report_20240320_143022.pdf
+.
+├── .github/
+│   ├── actions/
+│   │   └── branch-protection/
+│   │       └── action.yml
+│   └── workflows/
+│       └── branch-protection.yml
+├── src/
+│   ├── __init__.py
+│   ├── github_api.py
+│   ├── config.py
+│   ├── logger.py
+│   ├── main.py
+│   └── report_generator.py
+├── .dockerignore
+├── .env.example
+├── .gitignore
+├── Dockerfile
+├── entrypoint.sh
+├── LICENSE
+├── README.md
+├── repos.txt.example
+└── requirements.txt
 ```
+
+## Required Permissions
+
+The `GITHUB_TOKEN` needs:
+- `repo` scope for private repositories
+- `public_repo` scope for public repositories
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Authentication Errors**
-   - Verify your GitHub token has the required permissions
-   - Check that the token hasn't expired
-   - Ensure the token is correctly set in .env
+   - Verify your GitHub token has required permissions
+   - Check token expiration
+   - Ensure token is correctly set
 
 2. **Repository Access Issues**
-   - Confirm you have admin access to the repositories
-   - Verify repository names are correct
-   - Check organization membership if using org repositories
+   - Confirm admin access to repositories
+   - Verify repository names
+   - Check organization membership
 
-3. **Rate Limiting**
-   - The tool includes automatic delay between operations
-   - Check GitHub API rate limits if processing many repositories
-
-4. **File Input Issues**
-   - Ensure the repository list file exists
-   - Check file permissions
-   - Verify file format (one repository per line)
-   - Remove any special characters or BOM markers
+3. **Action Execution Issues**
+   - Ensure workflow has correct permissions
+   - Verify input parameters
+   - Check repository structure matches requirements
 
 ## Contributing
 
@@ -265,34 +214,3 @@ The tool enforces the following protection rules on the default branch:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## GitHub Action Development
-
-If you want to modify the action:
-
-1. Action files are located in `.github/actions/branch-protection/`
-2. Main workflow file is in `.github/workflows/branch-protection.yml`
-3. The action can be used either as a Docker container or composite action
-
-### Action Files Structure
-```
-.github/
-├── actions/
-│   └── branch-protection/
-│       ├── action.yml          # Docker-based action
-│       └── composite-action.yml # Composite action
-└── workflows/
-    └── branch-protection.yml   # Example workflow
-```
-
-### Building the Action Locally
-
-```bash
-# Build the Docker image
-docker build -t branch-protection .
-
-# Run the action locally
-docker run -e GITHUB_TOKEN=your_token \
-          -e GITHUB_OWNER=your_username \
-          branch-protection --verify-only
-```

@@ -1,22 +1,26 @@
 name: Branch Protection Automation
 
 on:
-  schedule:
-    - cron: '0 0 * * 1'  # Run weekly on Monday at midnight
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
     inputs:
       verify_only:
         description: 'Only verify protection rules'
-        required: false
         type: boolean
-        default: false
+        default: true
 
 jobs:
   protect-branches:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Run Branch Protection
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_owner: ${{ github.repository_owner }}
+          repos: "repo1 repo2 repo3"
+          verify_only: ${{ github.event.inputs.verify_only }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -27,15 +31,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Run branch protection
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_OWNER: ${{ github.repository_owner }}
-        run: |
-          python -m src.main \
-            ${{ github.event.inputs.verify_only == 'true' && '--verify-only' || '' }} \
-            --repos-file repos.txt
 
       - name: Upload protection report
         uses: actions/upload-artifact@v3

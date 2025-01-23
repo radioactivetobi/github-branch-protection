@@ -1,5 +1,9 @@
-name: 'GitHub Branch Protection Action'
-description: 'Automate branch protection rules across repositories'
+name: 'GitHub Branch Protection Automation'
+description: 'Automate and verify branch protection rules across multiple GitHub repositories'
+branding:
+  icon: 'shield'
+  color: 'green'
+
 inputs:
   github_token:
     description: 'GitHub token with repository access'
@@ -7,11 +11,11 @@ inputs:
   github_owner:
     description: 'GitHub organization or username'
     required: true
-  repos_file:
-    description: 'Path to file containing repository names'
-    required: false
   repos:
     description: 'Space-separated list of repositories'
+    required: false
+  repos_file:
+    description: 'Path to file containing repository names'
     required: false
   verify_only:
     description: 'Only verify protection rules without modifying'
@@ -24,6 +28,5 @@ runs:
   env:
     GITHUB_TOKEN: ${{ inputs.github_token }}
     GITHUB_OWNER: ${{ inputs.github_owner }}
-    VERIFY_ONLY: ${{ inputs.verify_only }}
-    REPOS_FILE: ${{ inputs.repos_file }}
-    REPOS: ${{ inputs.repos }} 
+    REPOS: ${{ inputs.repos }}
+    VERIFY_ONLY: ${{ inputs.verify_only }} 

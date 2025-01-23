@@ -1,4 +1,4 @@
-name: 'GitHub Branch Protection Automation'
+name: 'GitHub Branch Protector'
 description: 'Automate and verify branch protection rules across multiple GitHub repositories'
 branding:
   icon: 'shield'

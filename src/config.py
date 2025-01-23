@@ -1,19 +1,22 @@
-"""Configuration module for GitHub branch protection automation."""
+"""Configuration module for branch protection automation."""
 import os
-from typing import List
+from typing import List, Optional
 from dotenv import load_dotenv
 
 class Config:
-    """Configuration class to manage environment variables and settings."""
+    """Configuration class."""
     
     def __init__(self):
-        """Initialize configuration by loading environment variables."""
+        """Initialize configuration."""
         load_dotenv()
         
-        # GitHub settings
-        self.github_token = self._get_required('GITHUB_TOKEN')
-        self.github_owner = self._get_required('GITHUB_OWNER')
-        self.repositories = self._get_list('REPOSITORIES')
+        # Required settings
+        self.github_token = os.getenv('GITHUB_TOKEN')
+        self.github_owner = os.getenv('GITHUB_OWNER')
+        
+        # Optional settings
+        self.repositories = self._get_repositories()
+        self.verify_only = os.getenv('VERIFY_ONLY', 'false').lower() == 'true'
         
         # Branch protection settings
         self.required_approvals = int(os.getenv('REQUIRED_APPROVALS', '1'))
@@ -24,24 +27,20 @@ class Config:
         self.log_level = os.getenv('LOG_LEVEL', 'INFO')
         self.log_file = os.getenv('LOG_FILE', 'branch_protection.log')
     
-    def _get_required(self, key: str) -> str:
-        """Get a required environment variable or raise an error."""
-        value = os.getenv(key)
-        if not value:
-            raise ValueError(f"Required environment variable '{key}' is not set")
-        return value
+    def _get_repositories(self) -> List[str]:
+        """Get repositories from environment."""
+        repos = os.getenv('REPOSITORIES', '')
+        if repos:
+            return [r.strip() for r in repos.split() if r.strip()]
+        return []
     
-    def _get_list(self, key: str) -> List[str]:
-        """Get a comma-separated environment variable as a list."""
-        value = self._get_required(key)
-        return [item.strip() for item in value.split(',') if item.strip()]
-    
-    def validate(self) -> None:
-        """Validate the configuration."""
-        if not self.repositories:
-            raise ValueError("No repositories specified")
-        if self.required_approvals < 1:
-            raise ValueError("Required approvals must be at least 1")
+    def validate(self):
+        """Validate configuration."""
+        if not self.github_token:
+            raise ValueError("GitHub token not set. Set GITHUB_TOKEN environment variable.")
+            
+        if not self.github_owner:
+            raise ValueError("GitHub owner not set. Set GITHUB_OWNER environment variable.")
 
 # Create a global config instance
 config = Config()

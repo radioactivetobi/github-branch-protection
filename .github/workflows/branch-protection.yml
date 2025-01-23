@@ -1,6 +1,8 @@
-name: Branch Protection Automation
+name: Branch Protection Check
 
 on:
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
   workflow_dispatch:
     inputs:
       verify_only:
@@ -11,15 +13,21 @@ on:
 jobs:
   protect-branches:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
     steps:
       - uses: actions/checkout@v4
       
       - name: Run Branch Protection
         uses: ./
+        env:
+          BRANCH_PROTECTION_ACTION: ${{ secrets.BRANCH_PROTECTION_ACTION }}
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.BRANCH_PROTECTION_ACTION }}
           github_owner: ${{ github.repository_owner }}
-          repos: "repo1 repo2 repo3"
+          repositories: "genai-security-scripts geo-recon Simplehackingscripts"
           verify_only: ${{ github.event.inputs.verify_only }}
 
       - name: Setup Python
@@ -32,7 +40,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Upload protection report
+      - name: Upload Report
+        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: branch-protection-report
